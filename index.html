@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matriz Hexagonal de Desempenho dos Corretores</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              900: '#0f172a',
+            },
+            accent: {
+              gold: '#f59e0b',
+              emerald: '#10b981',
+              cyan: '#06b6d4',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .glass-card-hover {
+      transition: all 0.25s ease-in-out;
+    }
+    .glass-card-hover:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-blue-500 selection:text-white pb-10">
+
+  <!-- TOP HEADER -->
+  <header class="sticky top-0 z-40 bg-[#0b0f19]/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-4">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+          <i class="fa-solid fa-shapes text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-extrabold tracking-tight text-white">Matriz Hexagonal de Desempenho</h1>
+            <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Gestão por Fatos</span>
+          </div>
+          <p class="text-xs text-slate-400">Raio-X de Competências & Plano de Ação dos Corretores</p>
+        </div>
+      </div>
+
+      <!-- Controls & Filters -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Sector Selector -->
+        <div class="bg-slate-900/90 p-1 rounded-xl border border-slate-800 flex items-center text-xs font-semibold">
+          <button onclick="setSectorFilter('todos')" id="btn-sec-todos" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">Todos</button>
+          <button onclick="setSectorFilter('locacao')" id="btn-sec-locacao" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">Locação</button>
+          <button onclick="setSectorFilter('vendas')" id="btn-sec-vendas" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">Vendas</button>
+        </div>
+
+        <!-- Broker Select -->
+        <div class="relative min-w-[200px]">
+          <select id="brokerSelect" onchange="onBrokerSelectChange(this.value)" class="w-full bg-slate-900 border border-slate-700/80 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 cursor-pointer font-medium">
+            <!-- Dynamic Options -->
+          </select>
+        </div>
+
+        <!-- View Switcher Tabs -->
+        <div class="bg-slate-900 p-1 rounded-xl border border-slate-800 flex items-center text-xs font-medium">
+          <button onclick="switchView('dashboard')" id="tab-dashboard" class="px-3 py-1.5 rounded-lg text-white bg-blue-600 shadow-sm transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-pie text-xs"></i>
+            <span>Painel Individual</span>
+          </button>
+          <button onclick="switchView('consolidado')" id="tab-consolidado" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1.5">
+            <i class="fa-solid fa-grid-2 text-xs"></i>
+            <span>Visão Consolidada</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- OVERVIEW STATS BAR -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="glass-card p-4 rounded-2xl flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Equipe Mapeada</p>
+          <p class="text-xl font-extrabold text-white" id="stat-total-corretores">9 Corretores</p>
+          <p class="text-[11px] text-slate-500">3 Locação | 6 Vendas</p>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Média Global do Time</p>
+          <p class="text-xl font-extrabold text-emerald-400" id="stat-media-geral">3.45 / 5.0</p>
+          <p class="text-[11px] text-emerald-500/80 font-medium">Meta da Casa: 3.00</p>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Destaque do Setor</p>
+          <p class="text-lg font-bold text-amber-300 truncate max-w-[140px]" id="stat-top-performer">Thiago & Izabel</p>
+          <p class="text-[11px] text-slate-400">Nota Média: ~4.20</p>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">Gargalo Prioritário</p>
+          <p class="text-sm font-bold text-rose-300 truncate max-w-[140px]" id="stat-gargalo-geral">Prospecção & Follow-up</p>
+          <p class="text-[11px] text-rose-400/80">Maior volume de GAPs</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 1: DASHBOARD INDIVIDUAL DO CORRETOR -->
+    <div id="view-dashboard" class="space-y-6">
+      
+      <!-- HERO CARD CORRETOR -->
+      <div class="glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-l-blue-500">
+        <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <!-- Profile Info -->
+          <div class="flex items-center gap-5">
+            <div id="corretor-avatar" class="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 flex items-center justify-center text-3xl shadow-inner">
+              👩‍💼
+            </div>
+            <div>
+              <div class="flex items-center gap-3">
+                <h2 id="corretor-nome" class="text-2xl font-extrabold text-white">Carla</h2>
+                <span id="corretor-setor-badge" class="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold px-3 py-0.5 rounded-full">
+                  Setor: Locação
+                </span>
+              </div>
+              <p id="corretor-resumo" class="text-xs text-slate-400 mt-1 max-w-xl">
+                Profissional com alta velocidade de 1ª resposta no WhatsApp, mas precisando desenvolver prospecção ativa de carteira e técnica de negociação presencial.
+              </p>
+            </div>
+          </div>
+
+          <!-- Score Metrics -->
+          <div class="flex items-center gap-4 bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+            <div class="text-right">
+              <p class="text-[11px] text-slate-400 font-medium">Nota Ponderada Final</p>
+              <div class="flex items-baseline gap-1 justify-end">
+                <span id="corretor-nota-final" class="text-3xl font-black text-cyan-400">3.25</span>
+                <span class="text-xs text-slate-500">/ 5.0</span>
+              </div>
+              <p id="corretor-status-label" class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Desempenho Adequado</p>
+            </div>
+            <div class="w-12 h-12 rounded-full border-4 border-cyan-400/30 border-t-cyan-400 flex items-center justify-center font-bold text-xs text-cyan-300">
+              <i class="fa-solid fa-chart-radar text-lg"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dominant Profile & Bottleneck Badges -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+          <div class="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Perfil Dominante (Ponto Forte)</p>
+              <p id="corretor-ponto-forte" class="text-xs font-bold text-emerald-300">Agilidade e Atendimento Inicial (Nota 4.5)</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Gargalo Prioritário a Desenvolver</p>
+              <p id="corretor-gargalo-principal" class="text-xs font-bold text-rose-300">Prospecção e Captação Própria (Nota 2.0)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN CHART & IMPROVEMENT PLAN GRID -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- HEXAGONAL RADAR CHART CONTAINER (5 cols) -->
+        <div class="lg:col-span-5 glass-card p-6 rounded-2xl flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-draw-polygon text-cyan-400"></i>
+                Radar Hexagonal (0 a 5)
+              </h3>
+              <p class="text-xs text-slate-400">6 Competências Avaliadas</p>
+            </div>
+            <label class="inline-flex items-center cursor-pointer text-xs text-slate-400 gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+              <input type="checkbox" id="toggleBenchmark" checked onchange="updateRadarChart()" class="sr-only peer">
+              <div class="w-7 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600 relative"></div>
+              <span>Meta Casa (3.0)</span>
+            </label>
+          </div>
+
+          <div class="relative w-full aspect-square max-w-[380px] mx-auto flex items-center justify-center py-2">
+            <canvas id="hexRadarChart"></canvas>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mt-4 text-[11px] pt-4 border-t border-slate-800/80">
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="w-3 h-3 rounded-sm bg-cyan-400/80 inline-block"></span>
+              <span>Desempenho Corretor</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-300">
+              <span class="w-3 h-3 rounded-sm bg-amber-400/80 inline-block"></span>
+              <span>Meta Média da Casa (3.0)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTION PLAN & IMPROVEMENT MATRIX (7 cols) -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="glass-card p-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-bullseye text-rose-400"></i>
+                  Matriz de Pontos a Melhorar (Top 2 GAPs)
+                </h3>
+                <p class="text-xs text-slate-400">Diagnóstico de causa raiz e metas operacionais de 30 a 45 dias</p>
+              </div>
+              <span class="bg-rose-500/10 text-rose-400 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-rose-500/20">Foco Crítico</span>
+            </div>
+
+            <!-- GAPs Container -->
+            <div id="gaps-container" class="space-y-4">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DETAILED SCORECARD TABLE -->
+      <div class="glass-card p-6 rounded-2xl">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-table-list text-blue-400"></i>
+              Detalhamento por Competência Hexagonal
+            </h3>
+            <p class="text-xs text-slate-400">Cruzamento entre evidências mensuradas no WhatsApp e percepções presenciais da Gestão</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">≥ 3.0 No Padrão</span>
+            <span class="px-2.5 py-1 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 font-semibold">&lt; 3.0 Abaixo do Padrão</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/50">
+                <th class="p-3 font-semibold rounded-l-xl">Competência Hexagonal</th>
+                <th class="p-3 font-semibold text-center">Nota (0 a 5)</th>
+                <th class="p-3 font-semibold">Evidência Medida no WhatsApp</th>
+                <th class="p-3 font-semibold">Observação & Visão do Gestor</th>
+                <th class="p-3 font-semibold text-center rounded-r-xl">Status vs Meta</th>
+              </tr>
+            </thead>
+            <tbody id="table-scorecard-body" class="divide-y divide-slate-800/60">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FORMAL COMMITMENT FOOTER CARD -->
+      <div class="glass-card p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950/30 to-slate-900 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl font-bold">
+            <i class="fa-solid fa-file-signature"></i>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white">Compromisso de Desenvolvimento do Corretor</h4>
+            <p class="text-xs text-slate-400" id="corretor-compromisso-txt">Revisão agendada para 30 dias com o Gestor responsável.</p>
+          </div>
+        </div>
+        <button onclick="window.print()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs transition-all flex items-center gap-2 shadow-lg shadow-blue-600/30">
+          <i class="fa-solid fa-print"></i>
+          <span>Imprimir Relatório Raio-X</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- VIEW 2: VISÃO GERAL CONSOLIDADA DA EQUIPE -->
+    <div id="view-consolidado" class="hidden space-y-6">
+      
+      <!-- Section Header -->
+      <div class="glass-card p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+            <i class="fa-solid fa-grid-2 text-blue-400"></i>
+            Matriz Consolidada da Equipe
+          </h2>
+          <p class="text-xs text-slate-400">Comparativo visual de todos os corretores ativos e seus perfis hexagonais</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-400">Ordenar por:</span>
+          <select id="sortConsolidado" onchange="renderConsolidatedGrid()" class="bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 py-1.5 focus:outline-none">
+            <option value="nota-desc">Maior Nota Ponderada</option>
+            <option value="nota-asc">Menor Nota Ponderada</option>
+            <option value="nome">Nome do Corretor</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- CARDS GRID -->
+      <div id="consolidated-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="max-w-7xl mx-auto px-4 lg:px-8 mt-10 text-center text-xs text-slate-500 border-t border-slate-800/60 pt-6">
+    <p>© Matriz Hexagonal de Desempenho Imobiliário • Integração WhatsApp Painel + Gestão Presencial</p>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // DATA MATRIX FOR ALL BROKERS
+    const BROKERS_DATA = {
+      // LOCACAO
+      carla: {
+        id: 'carla',
+        name: 'Carla',
+        sector: 'locacao',
+        sectorLabel: 'Locação',
+        avatar: '👩‍💼',
+        resumo: 'Atendimento extremamente ágil no WhatsApp, porém necessita estruturar captação de estoque próprio e condução em objeções de negociação.',
+        scores: {
+          atendimento: 4.5,
+          mercado: 3.0,
+          negociacao: 2.5,
+          prospeccao: 2.0,
+          followup: 4.0,
+          postura: 3.5
+        },
+        whatsapp: {
+          atendimento: 'Tempo mediano de 1ª resposta: 4 min. Menos de 2% de mensagens sem retorno.',
+          mercado: 'Responde dúvidas básicas com velocidade, sem hesitação.',
+          negociacao: 'Perde o cliente quando surge objeção de valor de aluguel ou caução.',
+          prospeccao: 'Baixa interação com proprietários no painel (apenas 5 conversas/mês).',
+          followup: 'Usa etiquetas rigorosamente (D+1, D+3, D+7 aplicados em 90% da base).',
+          postura: 'N/A (Mensurável apenas via Gestor)'
+        },
+        gestor: {
+          atendimento: 'Excelente simpatia e abordagem acolhedora presencialmente.',
+          mercado: 'Domina garantias de locação (caução, seguro-fiança, fiador).',
+          negociacao: 'Hesita em reuniões presenciais de proposta com o proprietário.',
+          prospeccao: 'Não faz captação ativa de rua ou contatos com parceiros.',
+          followup: 'Organizada com agenda digital e envio de fichas.',
+          postura: 'Pontual e com excelente apresentação com os clientes.'
+        },
+        gaps: [
+          {
+            axis: 'Prospecção e Captação',
+            score: 2.0,
+            causa: 'Dependência de 95% dos leads vindos da recepção. Falta de rotina de prospecção ativa de novos imóveis.',
+            plano30: 'Realizar 15 contatos semanais com ex-clientes e proprietários para captação.',
+            plano45: 'Captar no mínimo 3 novos imóveis de locação dentro do preço de mercado.',
+            metric: 'Novos imóveis cadastrados no sistema'
+          },
+          {
+            axis: 'Negociação e Fechamento',
+            score: 2.5,
+            causa: 'Dificuldade em contornar objeções de valores de aluguel e exigência de garantias locatícias.',
+            plano30: 'Acompanhar 2 negociações de fechamento conduzidas pelo gestor ou corretor nota 5.',
+            plano45: 'Aumentar taxa de conversão de visita para proposta de 20% para 35%.',
+            metric: 'Conversão de Visitas → Propostas'
+          }
+        ]
+      },
+
+      priscila: {
+        id: 'priscila',
+        name: 'Priscila',
+        sector: 'locacao',
+        sectorLabel: 'Locação',
+        avatar: '👩‍💼',
+        resumo: 'Excelente fechadora de contratos presenciais, mas apresenta lentidão na 1ª resposta e falhas na cadência de follow-up digital.',
+        scores: {
+          atendimento: 2.5,
+          mercado: 3.5,
+          negociacao: 4.0,
+          prospeccao: 3.0,
+          followup: 2.0,
+          postura: 4.5
+        },
+        whatsapp: {
+          atendimento: 'Tempo mediano de 1ª resposta: 42 min. 14% de mensagens sem retorno após 18h.',
+          mercado: 'Oferece alternativas certeiras quando o imóvel pedido já foi alugado.',
+          negociacao: 'Alta conversão de conversa em proposta formal via WhatsApp.',
+          prospeccao: 'Contato frequente com proprietários antigos da carteira.',
+          followup: 'Leads ficam sem contato por mais de 5 dias sem motivo registrado.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Muito cordialmente presencial, porém perde leads digitais por demora.',
+          mercado: 'Leitura impecável de preços praticados nos bairros principais.',
+          negociacao: 'Firme na mesa de negociação, defende o valor do aluguel com propriedade.',
+          prospeccao: 'Traz boas captações vindas de indicação direta.',
+          followup: 'Desorganizada com anotações e registro de status dos clientes.',
+          postura: 'Postura executiva exemplar e grande empatia no presencial.'
+        },
+        gaps: [
+          {
+            axis: 'Organização e Follow-up',
+            score: 2.0,
+            causa: 'Falta de disciplina no registro de etiquetas e esquecimento de leads parados há mais de 3 dias.',
+            plano30: 'Adotar cadência obrigatória D+1, D+3 e D+7 com uso diário de etiquetas no WhatsApp.',
+            plano45: 'Zerar leads sem interação há mais de 48 horas no painel.',
+            metric: 'Leads zerados sem contato no painel'
+          },
+          {
+            axis: 'Atendimento e Rapport',
+            score: 2.5,
+            causa: 'Demora elevada na primeira resposta do WhatsApp, esfriando o lead da recepção.',
+            plano30: 'Atender 100% dos leads novos em no máximo 15 minutos durante o horário comercial.',
+            plano45: 'Reduzir taxa de abandono inicial para menos de 3%.',
+            metric: 'Tempo médio de 1ª resposta (< 15 min)'
+          }
+        ]
+      },
+
+      thiago: {
+        id: 'thiago',
+        name: 'Thiago',
+        sector: 'locacao',
+        sectorLabel: 'Locação',
+        avatar: '👨‍💼',
+        resumo: 'Referência de alta performance em locação. Equilíbrio perfeito entre velocidade digital, negociação e volume de captação.',
+        scores: {
+          atendimento: 4.5,
+          mercado: 4.5,
+          negociacao: 4.0,
+          prospeccao: 4.0,
+          followup: 4.5,
+          postura: 4.5
+        },
+        whatsapp: {
+          atendimento: 'Tempo médio 1ª resposta: 3 min. Taxa de conversão para visita: 48%.',
+          mercado: 'Responde dúvidas de vistoria e contrato de forma clara e estruturada.',
+          negociacao: 'Contorna objeções de garantia com soluções alternativas imediatas.',
+          prospeccao: 'Reativa base de ex-inquilinos mensalmente com novas oportunidades.',
+          followup: 'Funil impecável: 0 leads parados sem motivo.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Excelente condução presencial e pontualidade exemplar.',
+          mercado: 'Referência no time sobre leis de locação e seguros.',
+          negociacao: 'Fácil transição entre proprietário e inquilino na assinatura.',
+          prospeccao: 'Traz captações exclusivas com constância.',
+          followup: 'Documentação sempre completa e entregue no prazo.',
+          postura: 'Atua como mentor informal dos novos corretores.'
+        },
+        gaps: [
+          {
+            axis: 'Negociação e Fechamento',
+            score: 4.0,
+            causa: 'Ajuste fino para atingir a nota máxima (5.0): padronizar roteiros de desconto com proprietários.',
+            plano30: 'Criar matriz de argumentos de desconto mínimo para ser compartilhada com a equipe.',
+            plano45: 'Manter conversão de contrato assinado acima de 30% de todas as visitas.',
+            metric: 'Taxa de conversão Visita → Contrato'
+          },
+          {
+            axis: 'Prospecção e Captação',
+            score: 4.0,
+            causa: 'Aumentar foco em captação de imóveis de ticket alto na locação.',
+            plano30: 'Mapear 10 proprietários de imóveis comerciais/alto padrão.',
+            plano45: 'Fechar 2 captações exclusivas na região nobre.',
+            metric: 'Captações exclusivas alto padrão'
+          }
+        ]
+      },
+
+      // VENDAS
+      arthur: {
+        id: 'arthur',
+        name: 'Arthur',
+        sector: 'vendas',
+        sectorLabel: 'Vendas',
+        avatar: '👨‍💼',
+        resumo: 'Grande especialista técnico em financiamento e produto, porém com baixa disciplina de follow-up e pouca captação própria.',
+        scores: {
+          atendimento: 3.5,
+          mercado: 4.5,
+          negociacao: 4.0,
+          prospeccao: 2.5,
+          followup: 2.0,
+          postura: 4.0
+        },
+        whatsapp: {
+          atendimento: 'Atendimento educado, mas esquece de solicitar dados de qualificação rápida.',
+          mercado: 'Domina simuladores de financiamento Caixa/FGTS diretamente na conversa.',
+          negociacao: 'Recupera bem clientes que pedem desconto alegando juros altos.',
+          prospeccao: 'Quase zero conversas com proprietários no WhatsApp.',
+          followup: 'Muitos leads de vendas abandonados após a primeira recusa.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Ótima apresentação física e postura em reuniões.',
+          mercado: 'Fonte de consulta de toda a equipe para simulações complexas de crédito.',
+          negociacao: 'Conduz mesas de negociação com muita segurança.',
+          prospeccao: 'Não realiza prospecção de imóveis novos ou parcerias.',
+          followup: 'Falta de registro no histórico dos clientes.',
+          postura: 'Profissional e ético.'
+        },
+        gaps: [
+          {
+            axis: 'Organização e Follow-up',
+            score: 2.0,
+            causa: 'Abandona o lead de vendas após a 1ª objeção sem criar régua de nutrição de longo prazo.',
+            plano30: 'Implantar cadência de retomada a cada 15 dias para leads frios de vendas.',
+            plano45: 'Reativar 20 clientes antigos da base com novas opções de lançamentos.',
+            metric: 'Leads de vendas reativados'
+          },
+          {
+            axis: 'Prospecção e Captação',
+            score: 2.5,
+            causa: 'Dependência total dos leads distribuídos pela imobiliária.',
+            plano30: 'Fazer 1 ação semanal de prospecção em condomínios-alvo.',
+            plano45: 'Formalizar 2 novas captações de vendas com preço corrigido de mercado.',
+            metric: 'Captações formalizadas'
+          }
+        ]
+      },
+
+      izabel: {
+        id: 'izabel',
+        name: 'Izabel Araújo',
+        sector: 'vendas',
+        sectorLabel: 'Vendas',
+        avatar: '👩‍💼',
+        resumo: 'Top Performer de Vendas. Excelência na condução de reuniões de fechamento, relacionamento e acompanhamento rigoroso.',
+        scores: {
+          atendimento: 4.5,
+          mercado: 3.5,
+          negociacao: 4.5,
+          prospeccao: 4.0,
+          followup: 4.5,
+          postura: 4.5
+        },
+        whatsapp: {
+          atendimento: 'Tempo de resposta < 8 min. Personaliza mensagens pelo nome e preferências.',
+          mercado: 'Conhece bem a carteira e indica imóveis substitutos rapidamente.',
+          negociacao: 'Alta taxa de avanço de visita para proposta formal.',
+          prospeccao: 'Gera indicações constantemente de ex-compradores.',
+          followup: 'Organização impecável no WhatsApp com etiquetas e anotações.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Encanta os clientes nas visitas presenciais.',
+          mercado: 'Domina os bairros nobres, precisando apurar apenas produtos MCMV.',
+          negociacao: 'Fechadora nata na mesa de negociação com proprietários.',
+          prospeccao: 'Rede de contatos ativa gerando negócios recorrentes.',
+          followup: 'Processos de documentação e crédito sem atrasos.',
+          postura: 'Modelo de profissionalismo para os colegas.'
+        },
+        gaps: [
+          {
+            axis: 'Conhecimento de Mercado e Produto',
+            score: 3.5,
+            causa: 'Foco muito concentrado em imóveis prontos de médio/alto padrão, com menor domínio do segmento MCMV.',
+            plano30: 'Participar do treinamento interno sobre regras atualizadas do Minha Casa Minha Vida.',
+            plano45: 'Aumentar ofertas alternativas de lançamentos para leads de menor renda.',
+            metric: 'Simulações MCMV concluídas'
+          },
+          {
+            axis: 'Prospecção e Captação',
+            score: 4.0,
+            causa: 'Elevar captação exclusiva de imóveis de alta liquidez.',
+            plano30: 'Mapear 5 novos proprietários de imóveis em lançamentos recentes.',
+            plano45: 'Garantir 2 exclusividades de venda.',
+            metric: 'Contratos de Exclusividade'
+          }
+        ]
+      },
+
+      joao: {
+        id: 'joao',
+        name: 'João Lucas Franco',
+        sector: 'vendas',
+        sectorLabel: 'Vendas',
+        avatar: '👨‍💼',
+        resumo: 'Perfil em desenvolvimento. Apresenta dificuldades na primeira abordagem e falta de conhecimento detalhado da carteira.',
+        scores: {
+          atendimento: 2.0,
+          mercado: 2.5,
+          negociacao: 3.0,
+          prospeccao: 3.0,
+          followup: 3.5,
+          postura: 3.5
+        },
+        whatsapp: {
+          atendimento: 'Demora > 1 hora no primeiro contato. Respostas curtas sem perguntas de qualificação.',
+          mercado: 'Frequentemente responde "vou verificar" para perguntas simples de condomínio/IPTU.',
+          negociacao: 'Encaminha propostas, mas perde o cliente se o proprietário recusa a 1ª oferta.',
+          prospeccao: 'Realiza contatos ocasionais de captação.',
+          followup: 'Registra o status no WhatsApp, mas não reativa clientes frios.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Precisa melhorar postura de iniciativa durante a visita.',
+          mercado: 'Demonstra desconhecimento do estoque fora dos imóveis do anúncio.',
+          negociacao: 'Inseguro durante conversas diretas de proposta.',
+          prospeccao: 'Traz algumas opções, mas frequentemente fora do preço de mercado.',
+          followup: 'Pontual e organizado administrativamente.',
+          postura: 'Boa vontade, aceita feedbacks construtivos.'
+        },
+        gaps: [
+          {
+            axis: 'Atendimento e Rapport',
+            score: 2.0,
+            causa: 'Falta de roteiro estruturado de qualificação inicial e lentidão na resposta inicial.',
+            plano30: 'Adotar script padrão de qualificação (orçamento, bairro, prazo) com resposta em até 15 min.',
+            plano45: 'Elevar taxa de agendamento de visita de 10% para 25% dos leads atendidos.',
+            metric: 'Taxa de agendamento de visitas'
+          },
+          {
+            axis: 'Conhecimento de Mercado e Produto',
+            score: 2.5,
+            causa: 'Pouco estudo da carteira de imóveis da imobiliária e regras de financiamento.',
+            plano30: 'Realizar estudo semanal de 10 imóveis do estoque e simulações de crédito com o Arthur.',
+            plano45: 'Eliminar a resposta "vou verificar" em dúvidas básicas de imóveis anunciados.',
+            metric: 'Avaliação teórica de produtos/crédito'
+          }
+        ]
+      },
+
+      murilo: {
+        id: 'murilo',
+        name: 'Murilo',
+        sector: 'vendas',
+        sectorLabel: 'Vendas',
+        avatar: '👨‍💼',
+        resumo: 'Ótimo relacionamento e postura presencial, porém trava em negociações complexas e não gera estoque próprio.',
+        scores: {
+          atendimento: 4.0,
+          mercado: 4.0,
+          negociacao: 2.5,
+          prospeccao: 2.0,
+          followup: 3.5,
+          postura: 4.0
+        },
+        whatsapp: {
+          atendimento: 'Atendimento rápido e muito simpático. Cria bom vínculo inicial.',
+          mercado: 'Conhece bem as características dos imóveis anunciados.',
+          negociacao: 'Aceita o "vou pensar" do cliente sem propor alternativa ou fechamento.',
+          prospeccao: 'Não conversa com novos proprietários no WhatsApp.',
+          followup: 'Mantém conversas ativas por vários dias.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Muito elogiado pelos clientes pela cordialidade na visita.',
+          mercado: 'Boa leitura de bairros e potencial de valorização.',
+          negociacao: 'Dificuldade para fechar o negócio quando há objeção forte de valor ou avaliação de imóvel usado.',
+          prospeccao: 'Sem captações formalizadas nos últimos 60 dias.',
+          followup: 'Cumpre compromissos agendados.',
+          postura: 'Excelente postura corporativa.'
+        },
+        gaps: [
+          {
+            axis: 'Prospecção e Captação',
+            score: 2.0,
+            causa: 'Falta de rotina para prospecção ativa de novos imóveis e parcerias.',
+            plano30: 'Estabelecer meta de 3 abordagens de captação por semana com proprietários.',
+            plano45: 'Formalizar ao menos 2 captações com documentação completa.',
+            metric: 'Captações de vendas efetuadas'
+          },
+          {
+            axis: 'Negociação e Fechamento',
+            score: 2.5,
+            causa: 'Falta de técnicas para contornar objeções de fechamento e contraproposta.',
+            plano30: 'Treinar simulações de contorno de objeções de preço e "vou pensar" com o Gestor.',
+            plano45: 'Aumentar a conversão de proposta em contrato assinado de 15% para 30%.',
+            metric: 'Conversão Proposta → Contrato'
+          }
+        ]
+      },
+
+      vinicius: {
+        id: 'vinicius',
+        name: 'Vinícius Carvalho',
+        sector: 'vendas',
+        sectorLabel: 'Vendas',
+        avatar: '👨‍💼',
+        resumo: 'Forte em fechamento e negociação presencial, mas com gaps em organização de follow-up e postura em compromissos.',
+        scores: {
+          atendimento: 3.0,
+          mercado: 4.0,
+          negociacao: 4.5,
+          prospeccao: 3.5,
+          followup: 2.5,
+          postura: 3.0
+        },
+        whatsapp: {
+          atendimento: 'Responde no mesmo dia, porém sem padrão de horário.',
+          mercado: 'Responde dúvidas financeiras com muita precisão.',
+          negociacao: 'Excelente na condução de propostas e contrapropostas.',
+          prospeccao: 'Movimenta contatos de parceiros e investidores.',
+          followup: 'Muitos leads sem etiqueta e histórico desatualizado no painel.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Direto ao ponto nas visitas.',
+          mercado: 'Entende profundamente de valores por m² e investimento.',
+          negociacao: 'Grande capacidade de persuasão em mesas de negociação.',
+          prospeccao: 'Trouxe boas captações exclusivas.',
+          followup: 'Esquece de registrar o andamento dos processos no sistema.',
+          postura: 'Atrasos ocasionais em reuniões de alinhamento interno.'
+        },
+        gaps: [
+          {
+            axis: 'Organização e Follow-up',
+            score: 2.5,
+            causa: 'Desatenção no registro de status dos clientes e atualização das etapas no WhatsApp.',
+            plano30: 'Reservar 20 minutos no fim do dia para atualizar todas as etiquetas do painel.',
+            plano45: 'Alcançar 100% dos leads de vendas ativas etiquetados corretamente.',
+            metric: 'Auditoria de etiquetas do painel'
+          },
+          {
+            axis: 'Postura e Execução Presencial',
+            score: 3.0,
+            causa: 'Necessidade de melhorar pontualidade nas reuniões de equipe e prazos internos de documentação.',
+            plano30: 'Garantir presença pontual nas reuniões matinais de alinhamento.',
+            plano45: 'Entregar documentos de propostas no mesmo dia do aceite.',
+            metric: 'Índice de pontualidade e entrega de docs'
+          }
+        ]
+      },
+
+      nivea: {
+        id: 'nivea',
+        name: 'Nivea',
+        sector: 'vendas',
+        sectorLabel: 'Vendas',
+        avatar: '👩‍💼',
+        resumo: 'Atendimento e organização impecáveis no WhatsApp. Necessita expandir captações e aprofundar produtos de financiamento.',
+        scores: {
+          atendimento: 4.0,
+          mercado: 3.0,
+          negociacao: 3.5,
+          prospeccao: 2.5,
+          followup: 4.0,
+          postura: 4.0
+        },
+        whatsapp: {
+          atendimento: 'Resposta rápida, tom acolhedor e qualificação eficiente.',
+          mercado: 'Informa dados básicos do imóvel, mas transfere dúvidas complexas de crédito.',
+          negociacao: 'Conduz o cliente até a visita com ótima taxa de sucesso.',
+          prospeccao: 'Pouca prospecção de proprietários no painel.',
+          followup: 'Excelente uso de etiquetas e agendamentos de retorno.',
+          postura: 'N/A'
+        },
+        gestor: {
+          atendimento: 'Excelente escuta ativa nas conversas com compradores.',
+          mercado: 'Precisa dominar regras de FGTS, ITBI e financiamentos Caixa.',
+          negociacao: 'Honesta e transparente nas propostas.',
+          prospeccao: 'Dependente da recepção para gerar novos negócios.',
+          followup: 'Cadência diária e muito disciplinada.',
+          postura: 'Profissionalismo e comprometimento exemplar.'
+        },
+        gaps: [
+          {
+            axis: 'Prospecção e Captação',
+            score: 2.5,
+            causa: 'Baixa captação ativa de novos imóveis e pouca atuação com proprietários.',
+            plano30: 'Mapear 10 proprietários na região de atuação e realizar contato de oferta de serviços.',
+            plano45: 'Trazer 2 novos imóveis para a carteira de vendas.',
+            metric: 'Novos imóveis captados'
+          },
+          {
+            axis: 'Conhecimento de Mercado e Produto',
+            score: 3.0,
+            causa: 'Dependência do setor financeiro para tirar dúvidas de enquadramento de crédito.',
+            plano30: 'Realizar 5 simulações completas de crédito com apoio do correspondente bancário.',
+            plano45: 'Apresentar opções de crédito de forma autônoma na 1ª reunião.',
+            metric: 'Autonomia em simulações de crédito'
+          }
+        ]
+      }
+    };
+
+    // WEIGHTS BY SECTOR
+    const SECTOR_WEIGHTS = {
+      locacao: { atendimento: 0.25, mercado: 0.15, negociacao: 0.15, prospeccao: 0.10, followup: 0.25, postura: 0.10 },
+      vendas: { atendimento: 0.15, mercado: 0.25, negociacao: 0.25, prospeccao: 0.15, followup: 0.10, postura: 0.10 }
+    };
+
+    // CURRENT APP STATE
+    let currentSector = 'todos';
+    let currentBrokerId = 'carla';
+    let currentView = 'dashboard';
+    let chartInstance = null;
+
+    // COMPETENCY LABELS & KEYS
+    const COMPETENCIES = [
+      { key: 'atendimento', label: '1. Atendimento e Rapport' },
+      { key: 'mercado', label: '2. Mercado e Produto' },
+      { key: 'negociacao', label: '3. Negociação e Fechamento' },
+      { key: 'prospeccao', label: '4. Prospecção e Captação' },
+      { key: 'followup', label: '5. Organização e Follow-up' },
+      { key: 'postura', label: '6. Postura e Presencial' }
+    ];
+
+    // INITIALIZATION
+    window.onload = function() {
+      calculateAllWeightedScores();
+      updateBrokerSelectOptions();
+      updateGlobalStats();
+      renderCurrentView();
+    };
+
+    // CALCULATE WEIGHTED SCORE FOR EACH BROKER
+    function calculateWeightedScore(broker) {
+      const weights = SECTOR_WEIGHTS[broker.sector];
+      let total = 0;
+      for (let key in broker.scores) {
+        total += broker.scores[key] * (weights[key] || 0.166);
+      }
+      return parseFloat(total.toFixed(2));
+    }
+
+    function calculateAllWeightedScores() {
+      for (let id in BROKERS_DATA) {
+        BROKERS_DATA[id].finalScore = calculateWeightedScore(BROKERS_DATA[id]);
+      }
+    }
+
+    // GLOBAL STATS UPDATE
+    function updateGlobalStats() {
+      const brokers = Object.values(BROKERS_DATA);
+      const total = brokers.length;
+      
+      const sumScores = brokers.reduce((acc, b) => acc + b.finalScore, 0);
+      const media = (sumScores / total).toFixed(2);
+      
+      document.getElementById('stat-total-corretores').innerText = `${total} Corretores`;
+      document.getElementById('stat-media-geral').innerText = `${media} / 5.0`;
+
+      // Top Performer
+      const sorted = [...brokers].sort((a,b) => b.finalScore - a.finalScore);
+      document.getElementById('stat-top-performer').innerText = `${sorted[0].name} (${sorted[0].finalScore})`;
+    }
+
+    // FILTER SECTOR
+    function setSectorFilter(sector) {
+      currentSector = sector;
+      
+      // Update UI Buttons
+      ['todos', 'locacao', 'vendas'].forEach(s => {
+        const btn = document.getElementById(`btn-sec-${s}`);
+        if (s === sector) {
+          btn.className = 'px-3 py-1.5 rounded-lg text-white bg-blue-600 shadow-sm font-bold transition-all';
+        } else {
+          btn.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all';
+        }
+      });
+
+      updateBrokerSelectOptions();
+
+      // Ensure active broker matches sector filter
+      const availableBrokers = getFilteredBrokers();
+      if (availableBrokers.length > 0) {
+        const exists = availableBrokers.some(b => b.id === currentBrokerId);
+        if (!exists) {
+          currentBrokerId = availableBrokers[0].id;
+        }
+      }
+
+      renderCurrentView();
+    }
+
+    function getFilteredBrokers() {
+      const list = Object.values(BROKERS_DATA);
+      if (currentSector === 'todos') return list;
+      return list.filter(b => b.sector === currentSector);
+    }
+
+    // UPDATE SELECT DROPDOWN
+    function updateBrokerSelectOptions() {
+      const select = document.getElementById('brokerSelect');
+      select.innerHTML = '';
+      
+      const list = getFilteredBrokers();
+      list.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = `${b.name} (${b.sectorLabel}) - Nota: ${b.finalScore}`;
+        if (b.id === currentBrokerId) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function onBrokerSelectChange(val) {
+      currentBrokerId = val;
+      renderCurrentView();
+    }
+
+    // SWITCH VIEWS
+    function switchView(viewName) {
+      currentView = viewName;
+      const tabDash = document.getElementById('tab-dashboard');
+      const tabCons = document.getElementById('tab-consolidado');
+      const viewDash = document.getElementById('view-dashboard');
+      const viewCons = document.getElementById('view-consolidado');
+
+      if (viewName === 'dashboard') {
+        tabDash.className = 'px-3 py-1.5 rounded-lg text-white bg-blue-600 shadow-sm transition-all flex items-center gap-1.5';
+        tabCons.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1.5';
+        viewDash.classList.remove('hidden');
+        viewCons.classList.add('hidden');
+        renderDashboard();
+      } else {
+        tabCons.className = 'px-3 py-1.5 rounded-lg text-white bg-blue-600 shadow-sm transition-all flex items-center gap-1.5';
+        tabDash.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1.5';
+        viewCons.classList.remove('hidden');
+        viewDash.classList.add('hidden');
+        renderConsolidatedGrid();
+      }
+    }
+
+    function renderCurrentView() {
+      if (currentView === 'dashboard') {
+        renderDashboard();
+      } else {
+        renderConsolidatedGrid();
+      }
+    }
+
+    // RENDER INDIVIDUAL DASHBOARD
+    function renderDashboard() {
+      const broker = BROKERS_DATA[currentBrokerId];
+      if (!broker) return;
+
+      // Update Hero Card
+      document.getElementById('corretor-avatar').innerText = broker.avatar;
+      document.getElementById('corretor-nome').innerText = broker.name;
+      document.getElementById('corretor-setor-badge').innerText = `Setor: ${broker.sectorLabel}`;
+      document.getElementById('corretor-resumo').innerText = broker.resumo;
+      document.getElementById('corretor-nota-final').innerText = broker.finalScore;
+      
+      const statusLabel = document.getElementById('corretor-status-label');
+      if (broker.finalScore >= 4.0) {
+        statusLabel.innerText = 'Desempenho Excelente (Alta Performance)';
+        statusLabel.className = 'text-[10px] text-emerald-400 font-bold uppercase tracking-wider';
+      } else if (broker.finalScore >= 3.0) {
+        statusLabel.innerText = 'Desempenho Adequado (Na Meta)';
+        statusLabel.className = 'text-[10px] text-cyan-400 font-bold uppercase tracking-wider';
+      } else {
+        statusLabel.innerText = 'Desempenho Crítico (Em Desenvolvimento)';
+        statusLabel.className = 'text-[10px] text-rose-400 font-bold uppercase tracking-wider';
+      }
+
+      // Strengths & Bottleneck
+      const sortedKeys = Object.keys(broker.scores).sort((a,b) => broker.scores[b] - broker.scores[a]);
+      const topKey = sortedKeys[0];
+      const botKey = sortedKeys[sortedKeys.length - 1];
+
+      const topComp = COMPETENCIES.find(c => c.key === topKey);
+      const botComp = COMPETENCIES.find(c => c.key === botKey);
+
+      document.getElementById('corretor-ponto-forte').innerText = `${topComp.label.substring(3)} (Nota ${broker.scores[topKey].toFixed(1)})`;
+      document.getElementById('corretor-gargalo-principal').innerText = `${botComp.label.substring(3)} (Nota ${broker.scores[botKey].toFixed(1)})`;
+
+      // Render GAPs Action Plan
+      renderGapsPlan(broker);
+
+      // Render Table Scorecard
+      renderScorecardTable(broker);
+
+      // Render Radar Chart
+      renderRadarChart(broker);
+    }
+
+    // RENDER GAPs PLAN
+    function renderGapsPlan(broker) {
+      const container = document.getElementById('gaps-container');
+      container.innerHTML = '';
+
+      broker.gaps.forEach((gap, idx) => {
+        const gapEl = document.createElement('div');
+        gapEl.className = 'bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3';
+        
+        gapEl.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-md bg-rose-500/20 text-rose-400 text-xs font-bold flex items-center justify-center">#${idx+1}</span>
+              <h4 class="text-sm font-bold text-white">${gap.axis}</h4>
+            </div>
+            <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              Nota ${gap.score.toFixed(1)} / 5.0
+            </span>
+          </div>
+
+          <p class="text-xs text-slate-300 bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <b class="text-rose-400">Diagnóstico de Causa Raiz:</b> ${gap.causa}
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <div class="bg-blue-950/20 p-2.5 rounded-lg border border-blue-900/30">
+              <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wider block mb-1">Ação Prática (Meta 30 dias)</span>
+              <p class="text-xs text-slate-300">${gap.plano30}</p>
+            </div>
+            <div class="bg-indigo-950/20 p-2.5 rounded-lg border border-indigo-900/30">
+              <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block mb-1">Ação Prática (Meta 45 dias)</span>
+              <p class="text-xs text-slate-300">${gap.plano45}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span>Métrica de Acompanhamento: <b class="text-slate-200">${gap.metric}</b></span>
+            <span class="text-emerald-400 font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-clock-rotate-left text-[10px]"></i> Plano Ativo
+            </span>
+          </div>
+        `;
+
+        container.appendChild(gapEl);
+      });
+    }
+
+    // RENDER DETAILED TABLE
+    function renderScorecardTable(broker) {
+      const tbody = document.getElementById('table-scorecard-body');
+      tbody.innerHTML = '';
+
+      COMPETENCIES.forEach(comp => {
+        const score = broker.scores[comp.key];
+        const waText = broker.whatsapp[comp.key] || 'Não mensurado diretamente pelo painel.';
+        const gestorText = broker.gestor[comp.key] || 'Sem observações adicionais.';
+
+        const isGood = score >= 3.0;
+        const statusBadge = isGood 
+          ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-[11px]">Na Meta</span>`
+          : `<span class="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold text-[11px]">Abaixo (GAP)</span>`;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/30 transition-colors';
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-white">${comp.label}</td>
+          <td class="p-3 text-center">
+            <span class="text-sm font-extrabold ${isGood ? 'text-emerald-400' : 'text-rose-400'}">${score.toFixed(1)}</span>
+          </td>
+          <td class="p-3 text-slate-300 leading-relaxed">${waText}</td>
+          <td class="p-3 text-slate-300 leading-relaxed">${gestorText}</td>
+          <td class="p-3 text-center">${statusBadge}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // RADAR CHART RENDER
+    function renderRadarChart(broker) {
+      const ctx = document.getElementById('hexRadarChart').getContext('2d');
+      const showBenchmark = document.getElementById('toggleBenchmark').checked;
+
+      const labels = COMPETENCIES.map(c => c.label.substring(3));
+      const dataValues = COMPETENCIES.map(c => broker.scores[c.key]);
+      const benchmarkValues = [3.0, 3.0, 3.0, 3.0, 3.0, 3.0];
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const datasets = [
+        {
+          label: `${broker.name} (Desempenho)`,
+          data: dataValues,
+          backgroundColor: 'rgba(6, 182, 212, 0.25)',
+          borderColor: '#06b6d4',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#06b6d4',
+          pointBorderColor: '#ffffff',
+          pointHoverBackgroundColor: '#ffffff',
+          pointHoverBorderColor: '#06b6d4',
+          pointRadius: 4
+        }
+      ];
+
+      if (showBenchmark) {
+        datasets.push({
+          label: 'Meta Média da Casa (3.0)',
+          data: benchmarkValues,
+          backgroundColor: 'rgba(245, 158, 11, 0.08)',
+          borderColor: '#f59e0b',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointBackgroundColor: '#f59e0b',
+          pointRadius: 2
+        });
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            r: {
+              min: 0,
+              max: 5,
+              ticks: {
+                stepSize: 1,
+                color: '#94a3b8',
+                backdropColor: 'transparent',
+                font: { size: 10 }
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.08)'
+              },
+              angleLines: {
+                color: 'rgba(255, 255, 255, 0.15)'
+              },
+              pointLabels: {
+                color: '#f8fafc',
+                font: {
+                  size: 11,
+                  weight: '600'
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleColor: '#f8fafc',
+              bodyColor: '#cbd5e1',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderWidth: 1,
+              padding: 10
+            }
+          }
+        }
+      });
+    }
+
+    function updateRadarChart() {
+      const broker = BROKERS_DATA[currentBrokerId];
+      if (broker) renderRadarChart(broker);
+    }
+
+    // RENDER CONSOLIDATED GRID VIEW
+    function renderConsolidatedGrid() {
+      const grid = document.getElementById('consolidated-grid');
+      grid.innerHTML = '';
+
+      let list = getFilteredBrokers();
+      const sortVal = document.getElementById('sortConsolidado').value;
+
+      if (sortVal === 'nota-desc') {
+        list.sort((a,b) => b.finalScore - a.finalScore);
+      } else if (sortVal === 'nota-asc') {
+        list.sort((a,b) => a.finalScore - b.finalScore);
+      } else if (sortVal === 'nome') {
+        list.sort((a,b) => a.name.localeCompare(b.name));
+      }
+
+      list.forEach(broker => {
+        const card = document.createElement('div');
+        card.className = 'glass-card p-5 rounded-2xl glass-card-hover flex flex-col justify-between space-y-4';
+
+        const sortedKeys = Object.keys(broker.scores).sort((a,b) => broker.scores[b] - broker.scores[a]);
+        const topKey = sortedKeys[0];
+        const botKey = sortedKeys[sortedKeys.length - 1];
+
+        const topComp = COMPETENCIES.find(c => c.key === topKey);
+        const botComp = COMPETENCIES.find(c => c.key === botKey);
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">${broker.avatar}</span>
+                <div>
+                  <h3 class="text-base font-extrabold text-white">${broker.name}</h3>
+                  <span class="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full font-semibold">
+                    ${broker.sectorLabel}
+                  </span>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-2xl font-black text-cyan-400 block">${broker.finalScore}</span>
+                <span class="text-[10px] text-slate-400">Nota Final</span>
+              </div>
+            </div>
+
+            <!-- Mini Axes Scores Bar -->
+            <div class="space-y-1.5 my-4 bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+              ${COMPETENCIES.map(c => {
+                const val = broker.scores[c.key];
+                const pct = (val / 5) * 100;
+                const color = val >= 3.0 ? 'bg-emerald-500' : 'bg-rose-500';
+                return `
+                  <div class="flex items-center justify-between text-[10px]">
+                    <span class="text-slate-400 truncate max-w-[150px]">${c.label.substring(3)}</span>
+                    <div class="flex items-center gap-2">
+                      <div class="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full ${color}" style="width: ${pct}%"></div>
+                      </div>
+                      <span class="font-bold ${val >= 3.0 ? 'text-emerald-400' : 'text-rose-400'} w-4 text-right">${val.toFixed(1)}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <div class="space-y-2 text-xs">
+              <div class="flex items-center gap-2 text-emerald-400">
+                <i class="fa-solid fa-circle-check text-[10px]"></i>
+                <span class="truncate">Forte: <b>${topComp.label.substring(3)}</b></span>
+              </div>
+              <div class="flex items-center gap-2 text-rose-400">
+                <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+                <span class="truncate">GAP: <b>${botComp.label.substring(3)}</b></span>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="selectAndNavigateBroker('${broker.id}')" class="w-full mt-4 py-2 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all border border-slate-800 hover:border-blue-500 flex items-center justify-center gap-2">
+            <span>Ver Raio-X Detalhado</span>
+            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+          </button>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    function selectAndNavigateBroker(id) {
+      currentBrokerId = id;
+      document.getElementById('brokerSelect').value = id;
+      switchView('dashboard');
+    }
+  </script>
+</body>
+</html>
